@@ -12,6 +12,8 @@ integer, parameter :: INTER_TYPE_DAL  = 1
 integer, parameter :: INTER_TYPE_MOL  = 2
 integer, parameter :: INTER_TYPE_OWN  = 3
 integer, parameter :: INTER_TYPE_ORCA = 4
+integer, parameter :: INTER_TYPE_ORCA_POL = 5
+
 
 integer, parameter :: TYPE_NO_SYM = 1
 integer, parameter :: TYPE_SYM = 0
@@ -48,6 +50,7 @@ integer, parameter :: RDM_TYPE_APSG = 2
 integer, parameter :: RDM_TYPE_CAS  = 3
 integer, parameter :: RDM_TYPE_DMRG = 4
 integer, parameter :: RDM_TYPE_HF   = 5
+integer, parameter :: RDM_TYPE_POL  = 6
 
 integer, parameter :: TWOMO_INCORE = 1
 integer, parameter :: TWOMO_FFFF   = 2
@@ -259,6 +262,7 @@ type FlagsData
      ! sapt_utils.f90
      integer :: DIISN  = 6
      integer :: DIISOn = 2
+     integer :: IPOL   = 0
 
 end type FlagsData
 

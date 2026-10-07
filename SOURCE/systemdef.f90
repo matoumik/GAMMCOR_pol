@@ -159,6 +159,17 @@ else
      Flags%INO     = 0
      Flags%NoSym   = 1
      Flags%IA = 1
+
+     case(INTER_TYPE_ORCA_POL)
+     Flags%IDALTON = 1
+     Flags%ICASSCF = 1
+     Flags%IDMRG   = 1
+     Flags%iORCA   = 2
+     Flags%IAO     = 0
+     Flags%INO     = 0
+     Flags%NoSym   = 1
+     Flags%IA = 1
+     Flags%IPOL = 1
   ! ????
   end select
 
@@ -181,6 +192,11 @@ else
   case(RDM_TYPE_DMRG)
      Flags%ICASSCF = 1
      Flags%IDMRG   = 1
+
+  case(RDM_TYPE_POL)
+     Flags%ICASSCF = 1
+     Flags%IDMRG   = 1
+     write(LOUT,'(1x,a)') 'WARNING: POLARITONIC STUFF IS NOT VERY WELL TESTED'
 
   case(RDM_TYPE_HF)
      FLags%IGVB = 0

@@ -37,6 +37,12 @@ C
       Real*8, Dimension(:), Allocatable :: EpsHF 
       Real*8, Dimension(:), Allocatable :: UMOAO
       Integer, Dimension(:), Allocatable :: NSymMO
+      
+C     Mik Polaritonic
+      Real*8, Dimension(:), Allocatable :: XintsPENO
+      Real*8, Dimension(:), Allocatable :: RDMpeNO
+
+      
 C
       type(InputData) :: Input
       type(FlagsData) :: Flags
@@ -71,6 +77,7 @@ C     *************************************************************************
 C
 C     ICASSCF = 1 - CORRELATION ENE FOR CAS WILL BE COMPUTED
 C             = 0 - CORRELATION ENE FOR GVB WILL BE COMPUTED
+C           
 C
       ICASSCF=Flags%ICASSCF
 
@@ -127,6 +134,8 @@ C     NoSym = 1 - DO NOT IMPOSE SYMMETRY (RUN molpro WITH 'nosym')
 C           = 0 - IMPOSE SYMMETRY (RUN molpro WITHOUT 'nosym')
 C
       NoSym=Flags%NoSym
+C
+      IPOL=Flags%IPOL
 C
 C     *************************************************************************
 C
@@ -283,6 +292,8 @@ C
       Allocate  (XNuc(NInte1))
       Allocate  (TwoEl(NInte2))
       Allocate  (UMOAO(NBasis*NBasis))
+      Allocate  (XintsPENO(NInte1))
+      Allocate  (RDMpeNO(NInte1))
 C
       Occ(1:NBasis)=           0.D0
       URe(1:NBasis*NBasis)=    0.D0
@@ -290,6 +301,8 @@ C
       XNuc(1:NInte1)=          0.D0
       TwoEl(1:NInte2)=         0.D0
       UMOAO(1:NBasis*NBasis)=  0.D0
+      XintsPENO(1:NInte1)=     0.D0
+      RDMpeNO(1:NInte1)=       0.D0
 C
 C     LOAD THE GRID AND THE VALUES OF THE MO ORBITALS ON THE GRID
 C
@@ -324,7 +337,7 @@ C
       Else
 C
       Call ReadDAL(XKin,XNuc,ENuc,Occ,URe,TwoEl,UMOAO,
-     $ NInte1,NBasis,NInte2,NGem,Flags)
+     $ NInte1,NBasis,NInte2,NGem,Flags,XintsPENO,RDMpeNO)
 C
       EndIf
 C
@@ -337,7 +350,8 @@ C
       Call VV10(URe,UMOAO,Occ,NBasis)
       Else
       Call DMSCF(Title,URe,Occ,XKin,XNuc,ENuc,UMOAO,
-     $ TwoEl,NBasis,NInte1,NInte2,NGem,System)
+     $ TwoEl,NBasis,NInte1,NInte2,NGem,System,
+     $ XintsPENO,RDMpeNO)
       EndIf
 C
       If(IWarn.Gt.0) Then

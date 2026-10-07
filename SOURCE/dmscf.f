@@ -1,7 +1,8 @@
 *Deck DMSCF 
       Subroutine DMSCF 
      $ (Title,URe,Occ,XKin,XNuc,ENuc,UMOAO,TwoEl,NBasis,NInte1,NInte2,
-     $ NGem,System)
+     $ NGem,System,
+     $ XintsPENO, RDMpeNO)
 C
       use types
 C     !!! XKin CONTAINS BOTH KINETIC AND EL-N CONTRIBUTIONS !!!
@@ -63,21 +64,22 @@ C
       NDim=NBasis*(NBasis-1)/2
       NDimKer=NBasis*(1+NBasis)*(2+NBasis)*(3+NBasis)/24
 C
-      If(ICASSCF.Eq.1) Then
+      If(ICASSCF.GE.1) Then
 C
       Call ACCAS(ETot,ENuc,TwoEl,URe,UReSav,Occ,XOne,
-     $  Title,NBasis,NInte1,NInte2,NGem,System)
+     $  Title,NBasis,NInte1,NInte2,NGem,System,
+     $  XintsPENO, RDMpeNO)
 C
       Else
 C
 C     MH: LATER REPLACE OPTNORB BY ENERGY CHECK!!!
-      If(ITwoEl.Eq.1) Then
-      Call OPTNORB(ETot,URe,Occ,XOne,XNuc,DipX,DipY,DipZ,TwoEl,UMOAO,
+       If(ITwoEl.Eq.1) Then
+        Call OPTNORB(ETot,URe,Occ,XOne,XNuc,DipX,DipY,DipZ,TwoEl,UMOAO,
      $ NSymMO,Title,NBasis,NInte1,NInte2,NGem,NGOcc,IModG)
-      EndIf
+       EndIf
 C
-      NGOcc=0
-      Call INTERPA(ETot,ENuc,TwoEl,URe,UReSav,Occ,XOne,
+       NGOcc=0
+       Call INTERPA(ETot,ENuc,TwoEl,URe,UReSav,Occ,XOne,
      $  Title,NBasis,NInte1,NInte2,NDim,NGem,NGOcc)
 C
       EndIf

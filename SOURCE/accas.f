@@ -1,6 +1,7 @@
 *Deck ACCAS
       Subroutine ACCAS(ETot,ENuc,TwoNO,URe,UNOAO,Occ,XOne,
-     $  Title,NBasis,NInte1,NInte2,NGem,System)
+     $  Title,NBasis,NInte1,NInte2,NGem,System,
+     $  XintsPENO, RDMpeNO)
 C
       use types
 C     A ROUTINE FOR COMPUTING ELECTRONIC ENERGY USING ERPA TRANSITION
@@ -15,7 +16,8 @@ c
 C
       Dimension
      $ URe(NBasis,NBasis),UNOAO(NBasis,NBasis),Occ(NBasis),
-     $ TwoNO(NInte2),XOne(NInte1)
+     $ TwoNO(NInte2),XOne(NInte1),
+     $ XintsPENO(NInte1), RDMpeNO(NInte1)
 C
 C     LOCAL ARRAYS
 C
@@ -117,7 +119,8 @@ C
       Else
 C
       Call RunACCAS(ETot,ENuc,TwoNO,URe,UNOAO,Occ,XOne,
-     $  IndAux,IPair,IndN,IndX,NDimX,Title,NBasis,NInte1,NInte2,NGem)
+     $  IndAux,IPair,IndN,IndX,NDimX,Title,NBasis,NInte1,NInte2,NGem,
+     $  XintsPENO, RDMpeNO)
 C
       EndIf
 C
@@ -138,9 +141,11 @@ C
 
 * Deck RunACCAS 
       Subroutine RunACCAS(ETot,ENuc,TwoNO,URe,UNOAO,Occ,XOne,
-     $  IndAux,IPair,IndN,IndX,NDimX,Title,NBasis,NInte1,NInte2,NGem)
+     $  IndAux,IPair,IndN,IndX,NDimX,Title,NBasis,NInte1,NInte2,NGem,
+     $  XintsPENO, RDMpeNO)
 C
       use abfofo
+C
 C
       Implicit Real*8 (A-H,O-Z)
 C
@@ -152,7 +157,8 @@ C
       Dimension
      $ URe(NBasis,NBasis),UNOAO(NBasis,NBasis),Occ(NBasis),
      $ TwoNO(NInte2),XOne(NInte1),IndX(NDimX),IndN(2,NDimX),
-     $ IndAux(NBasis),IPair(NBasis,NBasis)
+     $ IndAux(NBasis),IPair(NBasis,NBasis),
+     $ XintsPENO(NInte1), RDMpeNO(NInte1)
 C
 C     LOCAL ARRAYS
 C
@@ -172,6 +178,15 @@ C             = 0 - core (inactive) orbitals excluded from ERPA correlation
 C
 C     PRINT FLAGS
 C
+      IF(IPOL.EQ.1)
+     $ Write(6,'("DEBUG: (RUNACCCAS polaritonic version)")')
+      IF(IPOL.EQ.1) THEN
+             Write(6,'("DEBUG: RDM_pe = ")')
+             DO I=1,NINTE1
+                  Write(6,'(X,I3,2E16.6)') I,RDMpeNO(I)
+             ENDDO
+      ENDIF
+
       If(IFlAC.Eq.1)
      $ Write(6,'(/," *** ADIABATIC CONNECTION CALCULATIONS ***",/)')
 C
@@ -192,7 +207,8 @@ C
       Call ACECORR(ETot,ENuc,TwoNO,URe,Occ,XOne,UNOAO,
      $ IndAux,ABPLUS,ABMIN,EigVecR,Eig,EGOne,
      $ Title,NBasis,NInte1,NInte2,NDimX,NGOcc,NGem,
-     $ IndN,IndX,NDimX)
+     $ IndN,IndX,NDimX,
+     $ XintsPENO, RDMpeNO)
       ElseIf(IFlACFREQ.Eq.1) Then
       Call ACIter(ETot,ENuc,TwoNO,URe,Occ,XOne,UNOAO,
      $ IndAux,ABPLUS,ABMIN,EigVecR,Eig,EGOne,
@@ -1212,6 +1228,9 @@ C
      $ EigX(NDimX*NDimX),
      $ IEigAddY(2,NDimX),IEigAddInd(2,NDimX),IndBlock(2,NDimX),
      $ XMAux(NDimX*NDimX)
+C
+C
+      write(6,'(/,X,"DEBUG: RUNNING AC0CASLR")')
 C
       IPair(1:NBasis,1:NBasis)=0
       Do II=1,NDimX

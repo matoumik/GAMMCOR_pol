@@ -65,6 +65,8 @@ C     RPAX: IFlCore=1, IFlFrag1=0
 C     ERPA without core orbitals: IFlCore=0, IFlFrag1=0
 C     ERPA and GVB+1,2-body with/without core orbs: IFlCore=1/0, IFl12=1, IFlFrag1=1
 C
+      Write(6,'(/,"DEBUG: INTERPA called",/)')
+
       If(IFlFrag1.Eq.1.And.IFlAC+IFlSnd.Eq.2) 
      $ Stop 'If IFlFrag1.Eq.1 one of the IFlAC, IFlSnd flags 
      $ must be zero!!!'

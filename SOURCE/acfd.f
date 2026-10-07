@@ -2,7 +2,8 @@
       Subroutine ACECORR(ETot,ENuc,TwoNO,URe,Occ,XOne,UNOAO,
      $ IndAux,ABPLUS,ABMIN,EigVecR,Eig,EGOne,
      $ Title,NBasis,NInte1,NInte2,NDim,NGOcc,NGem,
-     $ IndN,IndX,NDimX)
+     $ IndN,IndX,NDimX,
+     $ XintsPENO, RDMpeNO )     
 C
       use abmat
       use abfofo
@@ -24,7 +25,8 @@ C
      $ EigVecR(NDim*NDim),
      $ Eig(NDim),EGOne(NGem),
      $ UNOAO(NBasis,NBasis),
-     $ IndX(NDim),IndN(2,NDim)
+     $ IndX(NDim),IndN(2,NDim),
+     $ XintsPENO(NInte1), RDMpeNO(NInte1)
 C
 C     LOCAL ARRAYS
 C
@@ -56,10 +58,20 @@ C
       If(ICASSCF.Eq.1) Then
 C
       If(ITwoEl.eq.1) Then
-C      
+C     
+      Write(6,'("DEBUG: Running ACECORR")')
+      IF(IPOL.EQ.1) Write(6,'("DEBUG: (polaritonic version)")')
+      IF(IPOL.EQ.1) THEN
+             Write(6,'("DEBUG: RDM_pe = ")')
+             DO I=1,NINTE1
+                  Write(6,'(X,I3,2E16.6)') I,RDMpeNO(I)
+             ENDDO
+      ENDIF
+
       Call AC0CAS(ECorr,ETot,TwoNO,Occ,URe,XOne,
      $ ABPLUS,ABMIN,EigVecR,Eig,
-     $ IndN,IndX,NDimX,NBasis,NDim,NInte1,NInte2)
+     $ IndN,IndX,NDimX,NBasis,NDim,NInte1,NInte2,
+     $ XintsPENO, RDMpeNO )
 C 
       ElseIf(ITwoEl.eq.3) Then
 C
@@ -1901,7 +1913,8 @@ C
 *Deck AC0CAS
       Subroutine AC0CAS(ECorr,ETot,TwoNO,Occ,URe,XOne,
      $ ABPLUS,ABMIN,EigY,Eig,
-     $ IndN,IndX,NDimX,NBasis,NDim,NInte1,NInte2)
+     $ IndN,IndX,NDimX,NBasis,NDim,NInte1,NInte2,
+     $ XintsPENO, RDMpeNO)
 C
 C     A ROUTINE FOR COMPUTING AC INTEGRAND
 C
@@ -1918,7 +1931,8 @@ C
      $ URe(NBasis,NBasis),XOne(NInte1),Occ(NBasis),TwoNO(NInte2),
      $ IndAux(NBasis),
      $ ABPLUS(NDimX*NDimX),ABMIN(NDimX*NDimX),
-     $ Eig(NDimX),EigY(NDimX*NDimX),IndX(NDim),IndN(2,NDim)
+     $ Eig(NDimX),EigY(NDimX*NDimX),IndX(NDim),IndN(2,NDim),
+     $ XintsPENO(NInte1), RDMpeNO(NInte1)
 C
 C     LOCAL ARRAYS
 C
@@ -1930,6 +1944,22 @@ C
      $ EigX(NDimX*NDimX),
      $ IEigAddY(2,NDimX),IEigAddInd(2,NDimX),IndBlock(2,NDimX),
      $ XMAux(NDimX*NDimX),work1(NBasis,NBasis)
+C
+      Write(6,'("DEBUG: Running AC0CAS")')
+      IF(IPOL.EQ.1) Write(6,'("DEBUG: (polaritonic version)")')
+      IF(IPOL.EQ.1) THEN
+             Write(6,'("DEBUG: RDM_pe = ")')
+             DO I=1,NINTE1
+                  Write(6,'(X,I3,2E16.6)') I,RDMpeNO(I)
+             ENDDO
+
+             Write(6,'("DEBUG: INTS_pe = ")')
+
+            DO I=1,NInte1
+                  Write(6,'(X,I3,2E16.6)') I,XINTSPENO(I)
+            ENDDO
+
+      ENDIF
 C
       IPair(1:NBasis,1:NBasis)=0
       Do II=1,NDimX
@@ -2011,6 +2041,20 @@ C
       EndDo
       EndDo
       EndDo
+C
+C     Polaritonic part of the energy:
+C
+      EPOL=0.0
+C
+      DO I=1,NOccup
+         DO J=1,NOccup
+            II=(Max(I,J)*(Max(I,J)-1))/2+Min(I,J)
+            write(6,'(X,I3,I3,I3)')I,J,II
+            EPOL = EPOL + RDMpeNO(II)*XINTSPENO(II)
+         ENDDO
+      ENDDO
+C
+      Write(6,'(/,X,''Polaritonic Energy'',5X,F15.8)')EPOL
 C
       Write(6,'(/,X,''CASSCF Energy (w/o ENuc)'',5X,F15.8)')ETot
       Do I=1,NBasis
@@ -2167,9 +2211,16 @@ C
 C
       If(IRow.Ge.ICol) Then
 C
+C     -Mik Polaritonic Version
+      If(IPOl.Eq.1) Then
+      Call AB0ELEMENT_POL(ABP,ABM,IP,IQ,IR,IS,Occ,HNO,IGFact,
+     $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act,
+     $ NInte1,NInte2,NBasis,RDMpeNO,XintsPENO)
+      Else
       Call AB0ELEMENT(ABP,ABM,IP,IQ,IR,IS,Occ,HNO,IGFact,
      $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act,
      $ NInte1,NInte2,NBasis)
+      EndIf
 C
       ABPLUS((ICol-1)*NDimB+IRow)=ABP
       ABPLUS((IRow-1)*NDimB+ICol)=ABP
@@ -2243,9 +2294,16 @@ C
 C
       If(IRow.Ge.ICol) Then
 C
+      If(IPOl.Eq.1) Then
+      Call AB0ELEMENT_POL(ABP,ABM,IP,IQ,IR,IS,Occ,HNO,IGFact,
+     $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act,
+     $ NInte1,NInte2,NBasis,RDMpeNO,XintsPENO)
+       Else
       Call AB0ELEMENT(ABP,ABM,IP,IQ,IR,IS,Occ,HNO,IGFact,
      $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act,
      $ NInte1,NInte2,NBasis)
+      EndIf
+
 C
       ABPLUS((ICol-1)*NDimB+IRow)=ABP
       ABPLUS((IRow-1)*NDimB+ICol)=ABP
@@ -2322,9 +2380,15 @@ C
 C
       If(IRow.Ge.ICol) Then
 C
+      If(IPOl.Eq.1) Then
+      Call AB0ELEMENT_POL(ABP,ABM,IP,IQ,IR,IS,Occ,HNO,IGFact,
+     $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act
+     $ ,NInte1,NInte2,NBasis,RDMpeNO,XintsPENO)
+       Else
       Call AB0ELEMENT(ABP,ABM,IP,IQ,IR,IS,Occ,HNO,IGFact,
      $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act,
      $ NInte1,NInte2,NBasis)
+      EndIf
 C
       ABPLUS((ICol-1)*NDimB+IRow)=ABP
       ABPLUS((IRow-1)*NDimB+ICol)=ABP
@@ -2390,9 +2454,15 @@ C
       IEigAddInd(1,NFree1)=NFree1
       IEigAddInd(2,NFree1)=NFree1
 C
+      If(IPOl.Eq.1) Then
+      Call AB0ELEMENT_POL(ABP,ABM,IP,IQ,IP,IQ,Occ,HNO,IGFact,
+     $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act
+     $ ,NInte1,NInte2,NBasis,RDMpeNO,XintsPENO)
+      Else
       Call AB0ELEMENT(ABP,ABM,IP,IQ,IP,IQ,Occ,HNO,IGFact,
      $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,NRDM2Act,
      $ NInte1,NInte2,NBasis)
+      EndIf
 C
       Eig(NFree1)=ABP
 C
@@ -4248,6 +4318,7 @@ C
 C
       ABPL=Zero
       ABMIN=Zero
+      write(*,*)'AB0ELEMENT CALLED!!!'
 C
       Do IP=IQQ,IPP,IPP-IQQ
       Do IQ=IQQ,IPP,IPP-IQQ
@@ -4422,6 +4493,229 @@ C
 C
       Return
       End
+
+*Deck AB0ELEMENT_POL
+      Subroutine AB0ELEMENT_POL(ABPL,ABMIN,IR,IS,IPP,IQQ,Occ,HNO,
+     $ IGFact,
+     $ TwoNO,AuxI,AuxIO,WMAT,RDM2Act,C,Ind1,Ind2,NAct,
+     $ NRDM2Act,NInte1,
+     $ NInte2,NBasis,RDMpel,PEint)
+C
+C     FOR A GIVEN SET OF INDICES IR,IS,IPP,IQQ RETURNS 
+C     VALUES OF ABPLUS AND ABMIN MATRICES FOR ALPHA=0
+C
+      Implicit Real*8 (A-H,O-Z)
+C
+      Parameter(Zero=0.D0, Half=0.5D0, One=1.D0, Two=2.D0, Four=4.D0)
+C
+      Include 'commons.inc'
+C
+      Dimension
+     $ Occ(NBasis),HNO(NInte1),IGFact(NInte2),
+     $ TwoNO(NInte2),AuxI(NInte1),AuxIO(NInte1),
+     $ WMAT(NBasis,NBasis),RDM2Act(NRDM2Act),
+     $ C(NBasis),Ind1(NBasis),Ind2(NBasis),
+     $ RDMpel(NInte1),PEint(NInte1)
+C
+      ABPL=Zero
+      ABMIN=Zero
+C
+      Do IP=IQQ,IPP,IPP-IQQ
+       Do IQ=IQQ,IPP,IPP-IQQ
+        If(IP.Ne.IQ) Then
+C
+         If(IP.Gt.IQ) IPQ=(IP**2-3*IP+2)/2+IQ
+         If(IQ.Gt.IP) IQP=(IQ**2-3*IQ+2)/2+IP
+C
+         IQS=(Max(IS,IQ)*(Max(IS,IQ)-1))/2+Min(IS,IQ)
+         IPR=(Max(IR,IP)*(Max(IR,IP)-1))/2+Min(IR,IP)
+C
+         Arspq=Zero
+C
+C     One el terms:
+         If(IP.Eq.IR) Arspq=Arspq+(Occ(IP)-Occ(IS))*HNO(IQS)
+         If(IS.Eq.IQ) Arspq=Arspq+(Occ(IQ)-Occ(IR))*HNO(IPR)
+C
+C     POLARITONIC STUFF -MIK
+C     (unfortunately no natural orbitals in this case)
+         Arspq=Arspq+RDMpel(IPR)*PEint(IQS)
+         Arspq=Arspq+RDMpel(IQS)*PEint(IPR)
+C     More terms
+         if(IP.Eq.IR) Then
+            Do IXX=1,NBasis
+              IQX=(Max(IS,IXX)*(Max(IS,IXX)-1))/2+Min(IS,IXX)
+              ISX=(Max(IQ,IXX)*(Max(IQ,IXX)-1))/2+Min(IQ,IXX)
+              Arspq=Arspq-RDMpel(ISX)*PEint(IQX)
+            EndDo
+         EndIf
+         If(IS.Eq.IQ) Then
+            Do IXX=1,NBasis
+              IRX=(Max(IR,IXX)*(Max(IR,IXX)-1))/2+Min(IR,IXX)
+              IPX=(Max(IP,IXX)*(Max(IP,IXX)-1))/2+Min(IP,IXX)
+              Arspq=Arspq-RDMpel(IRX)*PEint(IPX)
+            EndDo
+         EndIf
+C
+         AuxTwoPQRS=One
+         If(IGFact(NAddr3(IP,IQ,IR,IS)).Eq.0) AuxTwoPQRS=Zero
+C
+         AuxPQRS=Zero
+         If(AuxTwoPQRS.Eq.One)
+     $ AuxPQRS=Two*TwoNO(NAddr3(IP,IQ,IR,IS))-TwoNO(NAddr3(IP,IR,IQ,IS))
+C
+C     T1+T2
+C
+         If(Occ(IP)*Occ(IR).Ne.Zero) Then
+C
+           If(Occ(IP).Eq.One.Or.Occ(IR).Eq.One) Then
+C
+             If(AuxTwoPQRS.Eq.One) Arspq=Arspq+Occ(IP)*Occ(IR)*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IR,IS))-TwoNO(NAddr3(IP,IR,IQ,IS)))
+             If(IP.Eq.IR) Arspq=Arspq+Occ(IP)*AuxI(IQS)
+C
+           Else
+C
+             If(IGem(IS).Eq.IGem(IQ)) Then
+               Do ITT=1,NAct
+               Do IUU=1,NAct
+                 IT=Ind1(ITT)
+                 IU=Ind1(IUU)
+C
+                 If(IGFact(NAddr3(IS,IQ,IT,IU)).Eq.1) 
+     $ Arspq=Arspq
+     $ +TwoNO(NAddr3(IS,IQ,IT,IU))*
+     $  FRDM2(IP,IU,IR,IT,RDM2Act,Occ,Ind2,NAct,NBasis)
+     $ +TwoNO(NAddr3(IS,IU,IT,IQ))*
+     $  FRDM2(IP,IU,IT,IR,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+               EndDo
+               EndDo
+             EndIf
+C
+             If(IP.Eq.IR) Arspq=Arspq+Occ(IP)*AuxIO(IQS)
+C
+           EndIf
+         EndIf
+C
+C     T3+T4 
+C
+         If(Occ(IQ)*Occ(IS).Ne.Zero) Then
+C
+           If(Occ(IQ).Eq.One.Or.Occ(IS).Eq.One) Then
+C
+             If(AuxTwoPQRS.Eq.One) Arspq=Arspq+Occ(IQ)*Occ(IS)*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IR,IS))-TwoNO(NAddr3(IP,IR,IQ,IS)))
+             If(IQ.Eq.IS) Arspq=Arspq+Occ(IQ)*AuxI(IPR)
+C
+           Else
+C
+             If(IGem(IP).Eq.IGem(IR)) Then
+               Do ITT=1,NAct
+               Do IUU=1,NAct
+                 IT=Ind1(ITT)
+                 IU=Ind1(IUU)
+C
+                 If(IGFact(NAddr3(IU,IT,IP,IR)).Eq.1)
+     $ Arspq=Arspq
+     $ +TwoNO(NAddr3(IU,IT,IP,IR))*
+     $ FRDM2(IS,IT,IQ,IU,RDM2Act,Occ,Ind2,NAct,NBasis)
+     $ +TwoNO(NAddr3(IU,IR,IP,IT))*
+     $ FRDM2(IS,IT,IU,IQ,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+               EndDo
+               EndDo
+             EndIf
+C
+             If(IQ.Eq.IS) Arspq=Arspq+Occ(IQ)*AuxIO(IPR)
+C
+           EndIf
+C     
+         EndIf
+C
+C     T5
+C
+         If(Occ(IR)*Occ(IQ).Ne.Zero) Then
+C
+           If(Occ(IQ).Eq.One.Or.Occ(IR).Eq.One) Then
+C
+             Arspq=Arspq-Occ(IQ)*Occ(IR)*AuxPQRS
+C
+           Else
+C
+             If(IGem(IP).Eq.IGem(IS)) Then
+               Do ITT=1,NAct
+               Do IUU=1,NAct
+                 IT=Ind1(ITT)
+                 IU=Ind1(IUU)
+C
+                 If(IGFact(NAddr3(IP,IT,IS,IU)).Eq.1) 
+     $ Arspq=Arspq
+     $ -TwoNO(NAddr3(IP,IT,IS,IU))*
+     $ FRDM2(IT,IU,IQ,IR,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+               EndDo
+               EndDo
+             EndIf
+C
+           EndIf
+         EndIf
+C
+C     T6      
+C
+         If(Occ(IP)*Occ(IS).Ne.Zero) Then
+C
+           If(Occ(IP).Eq.One.Or.Occ(IS).Eq.One) Then
+C
+             Arspq=Arspq-Occ(IP)*Occ(IS)*AuxPQRS
+C
+           Else
+C
+             If(IGem(IR).Eq.IGem(IQ)) Then
+               Do ITT=1,NAct
+               Do IUU=1,NAct
+                 IT=Ind1(ITT)
+                 IU=Ind1(IUU)
+C
+                 If(IGFact(NAddr3(IT,IQ,IU,IR)).Eq.1) 
+     $ Arspq=Arspq
+     $ -TwoNO(NAddr3(IT,IQ,IU,IR))*
+     $ FRDM2(IS,IP,IU,IT,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+               EndDo
+               EndDo
+             EndIf
+C
+           EndIf
+         EndIf
+C
+         If(IS.Eq.IQ) Arspq=Arspq-Half*WMAT(IP,IR)
+         If(IP.Eq.IR) Arspq=Arspq-Half*WMAT(IQ,IS)
+C
+           ABPL=ABPL+Arspq
+           If(IP.Gt.IQ) Then
+             ABMIN=ABMIN+Arspq
+           Else
+             ABMIN=ABMIN-Arspq
+           EndIf
+C    
+c        If(IP.Ne.IQ)
+         EndIf
+C     end of IP,IQ LOOPS
+      EndDo
+      EndDo
+C
+      IP=IPP
+      IQ=IQQ
+C
+      If((C(IP)+C(IQ))*(C(IR)+C(IS)).Ne.Zero)
+     $ ABPL=ABPL/(C(IP)+C(IQ))/(C(IR)+C(IS))
+      If((C(IP)-C(IQ))*(C(IR)-C(IS)).Ne.Zero)
+     $ ABMIN=ABMIN/(C(IP)-C(IQ))/(C(IR)-C(IS))
+C
+C
+      Return
+      End
+
 
 *Deck Y01GVB
       Subroutine Y01GVB(TwoNO,Occ,URe,XOne,EigY,Eig,Eig1,

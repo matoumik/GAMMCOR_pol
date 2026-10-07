@@ -269,6 +269,10 @@ subroutine read_block_calculation(CalcParams, line)
                CalcParams%InterfaceType = INTER_TYPE_ORCA
                CalcParams%RDMSource = INTER_TYPE_ORCA
                CalcParams%RDMType   = RDM_TYPE_DMRG
+           elseif (uppercase(val) == "ORCA_POL") then
+               CalcParams%InterfaceType = INTER_TYPE_ORCA_POL
+               CalcParams%RDMSource = INTER_TYPE_ORCA_POL
+               CalcParams%RDMType   = RDM_TYPE_POL
            endif
 
       case ("JOBTYPE")
@@ -333,6 +337,8 @@ subroutine read_block_calculation(CalcParams, line)
               CalcParams%RDMType = RDM_TYPE_HF
            elseif (uppercase(val) == "DMRG" ) then
               CalcParams%RDMType = RDM_TYPE_DMRG
+           elseif (uppercase(val) == "POL" ) then
+              CalcParams%RDMType = RDM_TYPE_POL
            endif
 
       case ("TWOMOINT")

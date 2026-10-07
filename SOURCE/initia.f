@@ -1,6 +1,7 @@
 *Deck ReadDAL
       Subroutine ReadDAL(XKin,XNuc,ENuc,Occ,URe,
-     $ TwoEl,UMOAO,NInte1,NBasis,NInte2,NGem,Flags)
+     $ TwoEl,UMOAO,NInte1,NBasis,NInte2,NGem,Flags,
+     $ XintsPENO, RDMpeNO)
 C
 C     READ HAO, 2-EL INTEGRALS IN NO, C_COEFFICIENTS, IGEM FROM A DALTON_GENERATED FILE
 C     READ UMOAO FROM DALTON.MOPUN
@@ -14,7 +15,8 @@ C
 C
       Real*8 XKin(NInte1),XNuc(NInte1),Occ(NBasis),URe(NBasis,NBasis),
      $ TwoEl(NInte2),UMOAO(NBasis,NBasis),
-     $ UAux(NBasis,NBasis)
+     $ UAux(NBasis,NBasis), 
+     $ XintsPENO(NInte1), RDMpeNO(NInte1)
       integer :: ione,NBas(8),NSymBas(8),NSymOrb(8),nrhf(8),ioprhf
       logical :: exione,ex 
       double precision, allocatable :: TMPMO(:,:)
@@ -36,7 +38,8 @@ C     IDMRG - integrals and RDM's read from external dmrg files
 C
       If(IDMRG.Eq.1) Then
       Call ReadDMRG(XKin,XNuc,ENuc,Occ,URe,
-     $ TwoEl,UMOAO,NInte1,NBasis,NInte2,NGem,iORCA)
+     $ TwoEl,UMOAO,NInte1,NBasis,NInte2,NGem,iORCA,
+     $ XintsPENO, RDMpeNO)
       Return
       EndIf
 C
@@ -238,7 +241,8 @@ C               IT WORKS WITH ORCA OUTPUTS (IEugene=0)
 C
 *Deck ReadDMRG
       Subroutine ReadDMRG(XKin,XNuc,ENuc,Occ,URe,
-     $ TwoEl,UMOAO,NInte1,NBasis,NInte2,NGem,iORCA)
+     $ TwoEl,UMOAO,NInte1,NBasis,NInte2,NGem,iORCA,
+     $ XintsPENO, RDMpeNO)
 C
       use sorter
       use tran
@@ -251,7 +255,8 @@ C
       Parameter (Zero=0.D0,One=1.D0,Two=2.D0)
 C
       Real*8 XKin(NInte1),XNuc(NInte1),Occ(NBasis),URe(NBasis,NBasis),
-     $ TwoEl(NInte2),UMOAO(NBasis*NBasis)
+     $ TwoEl(NInte2),UMOAO(NBasis*NBasis),XintsPENO(NInte1),
+     $ RDMpeNO(NInte1)
 C
       Character*60 FName,Aux1
 C
@@ -264,14 +269,23 @@ C
      $ AUXM(NBasis,NBasis),AUXM1(NBasis,NBasis),
      $ Fock(NBasis*NBasis),
      $ UAux(NBasis,NBasis),
-     $ FockF(NInte1),GammaAB(NInte1),Eps(NBasis,NBasis)
+     $ FockF(NInte1),GammaAB(NInte1),Eps(NBasis,NBasis),
+     $ RDMpe(NInte1),RDMpeAUX(NInte1),XintsPE(NInte1),
+     $ XintsPEAUX(NInte1)
       Integer(8) IOutInfo
 
+      Write(6,'(1X,"DEBUG: iORCA: ",I4)')
+     $ iORCA
       If(iORCA==1) then
       LiborNew=1
       IEugene=0
+      MikPOL=0
       ElseIf(iORCA==0) then
       IEugene=1
+      ElseIf(iORCA==2) then
+      LiborNew=1
+      IEugene=0
+      MikPOL=1
       EndIf
 C
       UMOAO(1:NBasis*NBasis)=Zero
@@ -284,37 +298,91 @@ C     READ IN 1-RDM AND DIAGONALIZE IT
 C
       If(IEugene.Eq.0) Then
 C   
-      If(LiborNew.Eq.1) Then
+       If(LiborNew.Eq.1) Then
 C
-      Open(10,File='G1.bin',form='unformatted', access='stream',
+        Open(10,File='G1.bin',form='unformatted', access='stream',
      $ Status='Old')
-      Read(10)i,j,k
-      ICount=0
-      IJ=0
-      Do I=1,NBasis
-      Do J=1,I
-      IJ=IJ+1
-      Read(10,End=61) X
-      Ind=I*(I-1)/2+J
-      Gamma(Ind)=X/Two
-      ICount=ICount+1
-      EndDo
-      EndDo
-   61 Close(10)
+        Read(10)i,j,k
+        ICount=0
+        IJ=0
+        Do I=1,NBasis
+         Do J=1,I
+          IJ=IJ+1
+          Read(10,End=61) X
+          Ind=I*(I-1)/2+J
+          Gamma(Ind)=X/Two
+          ICount=ICount+1
+         EndDo
+        EndDo
+   61  Close(10)
+
+         Write(6,'("DEBUG: RDM = ")')
+       DO I=1,NINTE1
+             Write(6,'(X,I3,2E16.6)') I,GAMMA(I)
+       ENDDO
 C
-      Else
+C     Mik Polaritonic:
+       If(MikPOL.eq.1) Then
+        Open(10,File='Gpe.bin',form='unformatted', access='stream',
+     $ Status='Old')
+        Read(10)i,j,k
+        ICount=0
+        IJ=0
+        Do I=1,NBasis
+         Do J=1,I
+          IJ=IJ+1
+          Read(10,End=62) X
+          Ind=I*(I-1)/2+J
+          RDMpeAUX(Ind)=X
+          ICount=ICount+1
+         EndDo
+        EndDo
+   62  Close(10)
+       write(6,'(/,X,"Gpe.bin file read")')
+
+       Open(10,File='Gp_b.bin',form='unformatted',access='stream',
+     $ Status='Old')
+       Read(10)i,j,k
+       Read(10) X
+       Exp_B=X
+       Close(10)
+       write(6,'(/,X,"Gp_b.bin file read")')
+
+      Open(10,File='PEINTS.bin',form='unformatted', access='stream',
+     $ Status='Old')
+        Read(10)i,j,k
+        ICount=0
+        IJ=0
+        Do I=1,NBasis
+         Do J=1,I
+          IJ=IJ+1
+          Read(10,End=63) X
+          Ind=I*(I-1)/2+J
+          Write(6,'(2X,"PeVAL: ",F5.2)') X
+          XINTSPE(Ind)=X
+          ICount=ICount+1
+         EndDo
+        EndDo
+   63  Close(10)
+       write(6,'(/,X,"PEINTS.bin file read")')
+
+C     End polaritonic block
+      Endif
+
+      
+       Else
 C
-      Open(10,File='rdmdump.dat',Status='Old')
-   20 Read(10,*,End=30) X,I1,I2,I3,I4
-      If((I1+I2.Ne.0).And.(I3+I4.Eq.0)) Then
-      Ind=(Max(I1,I2)*(Max(I1,I2)-1))/2+Min(I1,I2)
-      Gamma(Ind)=X
-      EndIf
-      GoTo 20
-  30  Close(10)
+        Open(10,File='rdmdump.dat',Status='Old')
+   20   Read(10,*,End=30) X,I1,I2,I3,I4
+        If((I1+I2.Ne.0).And.(I3+I4.Eq.0)) Then
+           Ind=(Max(I1,I2)*(Max(I1,I2)-1))/2+Min(I1,I2)
+           Gamma(Ind)=X
+           EndIf
+        GoTo 20
+  30    Close(10)
 C
-C     If(LiborNew.Eq.1) Then
-      EndIf
+C     If(LiborNew.Eq.1) Then else block
+       EndIf
 C
       Else
 C
@@ -413,29 +481,51 @@ C
 C
       ElseIf(IBin.Eq.1) Then
 C
-      Open(10,File='NUC_REP.bin',form='unformatted',access='stream',
+       Open(10,File='NUC_REP.bin',form='unformatted',access='stream',
      $ Status='Old')
-      Read(10) X
-      ENuc=X
-      Close(10)
+       Read(10) X
+       ENuc=X
+       Close(10)
 C
-      Open(10,File='FACT.bin',form='unformatted',access='stream',
+       Open(10,File='FACT.bin',form='unformatted',access='stream',
      $ Status='Old')
-      If(LiborNew.Eq.1) Read(10)I,J,K
-      ICount=0
-      IJ=0
-      Do I=1,NBasis
-      Do J=1,I
-      IJ=IJ+1
-      Read(10,End=31) X
-      Ind=I*(I-1)/2+J
-      XKin(Ind)=X
-      ICount=ICount+1
-      EndDo
-      EndDo
-   31 Close(10)
-      Write(6,'(" The number of 1-el integrals read vs. expected",
+       If(LiborNew.Eq.1) Read(10)I,J,K
+        ICount=0
+        IJ=0
+        Do I=1,NBasis
+         Do J=1,I
+          IJ=IJ+1
+          Read(10,End=31) X
+          Ind=I*(I-1)/2+J
+          XKin(Ind)=X
+          ICount=ICount+1
+         EndDo
+        EndDo
+   31   Close(10)
+        Write(6,'(" The number of 1-el integrals read vs. expected",
      $ 2I10)') ICount,NInte1 
+
+       If(Mikpol.eq.1) Then
+        Open(10,File='FACT.bin',form='unformatted',access='stream',
+     $ Status='Old')
+        If(LiborNew.Eq.1) Read(10)I,J,K
+         ICount=0
+         IJ=0
+         Do I=1,NBasis
+          Do J=1,I
+           IJ=IJ+1
+           Read(10,End=32) X
+           Ind=I*(I-1)/2+J
+           XKin(Ind)=X
+           ICount=ICount+1
+          EndDo
+         EndDo
+   32    Close(10)
+         Write(6,'(" The number of phot-el integrals read vs. expected",
+     $ 2I10)') ICount,NInte1 
+       EndIf
+
+
 C
       If(ITwoEl.Eq.1) Then    
 C 
@@ -678,13 +768,69 @@ C
       If(Err.Gt.1.D-5) IUNIT=0
 C
       If(IUNIT.Eq.1) Then
-      Write(6,'(/,X,"URe is a unit matrix up to ",E16.6)') ERR
-      Write(6,'(X,"do not transform integrals")') 
+       Write(6,'(/,X,"URe is a unit matrix up to ",E16.6)') ERR
+       Write(6,'(X,"do not transform integrals")') 
       EndIf
 C
       If(IUNIT.Eq.0) Then
 C
-      Call MatTr(XKin,URe,NBasis)
+       Call MatTr(XKin,URe,NBasis)
+C
+       If(MikPOL.eq.1) Then
+
+        DO I=1,NInte1
+            Write(6,'(X,I3,2E16.6)') I,RDMpeAUX(I)
+        ENDDO
+
+        InactOFF = nInAC*(NinAC-1)/2
+        VaLINACT = EXP_B * 2
+        IJ=0
+        IJACT=0
+        DO I=1,NBasis
+         DO J=1,I
+            IJ=IJ+1
+            IF(I.LE.nINAC) THEN
+              IF(I.EQ.J) RDMPE(IJ)=VALINACT
+            ELSEIF(I.GT.(nINAC+nAC)) THEN
+
+            ELSE 
+              IF(J.GT.nINAC) THEN
+                  IJACT=IJACT+1
+                  RDMPE(IJ)=RDMPEAUX(IJACT)
+              ENDIF
+            ENDIF
+         ENDDO
+        ENDDO
+        
+        
+        Write(6,'(" Transforming photon-electron RDM ...",/)')
+        Call MatTr(RDMpe,URe,NBasis)
+
+        DO I=1,NInte1
+            RDMpeNO(I) = RDMpe(I)
+        ENDDO
+
+        DO I=1,NInte1
+            Write(6,'(X,I3,2E16.6)') I,RDMpeAUX(I)
+        ENDDO
+
+C     -----------------------
+        
+        Write(6,'(" Transforming photon-electron INTs ...",/)')
+        Call MatTr(XINTSPE,URe,NBasis)
+
+        DO I=1,NInte1
+            XINTSPENO(I) = XINTSPE(I)
+        ENDDO
+
+        DO I=1,NInte1
+            Write(6,'(X,I3,2E16.6)') I,XINTSPE(I)
+        ENDDO
+
+C      Mik not sure if necessary to dealocate this?
+C        Deallocate(RDMpe)
+
+       EndIf
 C
       If(ITwoEl.Eq.1) Then
       Write(6,'(" Transforming two-electron integrals ...",/)')
