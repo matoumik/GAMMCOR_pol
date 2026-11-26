@@ -159,6 +159,7 @@ else
      Flags%INO     = 0
      Flags%NoSym   = 1
      Flags%IA = 1
+     Flags%IPOL = 0
 
      case(INTER_TYPE_ORCA_POL)
      Flags%IDALTON = 1

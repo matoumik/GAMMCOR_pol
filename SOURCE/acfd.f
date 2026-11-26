@@ -2494,9 +2494,15 @@ C
      $" *** COMPUTING ABPLUS(1) AND ABMIN(1) MATRICES ***"
      $ )')
 C
+      If(IPOL.EQ.1) Then
+      Call AB1_CAS_POL(ABPLUS,ABMIN,URe,Occ,XOne,TwoNO,
+     $ RDM2Act,NRDM2Act,IGFact,C,Ind1,Ind2,
+     $ IndBlock,NoEig,NDimX,NBasis,NInte1,NInte2,RDMpeNO,XintsPENO)
+      Else
       Call AB1_CAS(ABPLUS,ABMIN,URe,Occ,XOne,TwoNO,
      $ RDM2Act,NRDM2Act,IGFact,C,Ind1,Ind2,
      $ IndBlock,NoEig,NDimX,NBasis,NInte1,NInte2)
+      Endif
 C
       Deallocate(RDM2Act)
 C
@@ -3899,13 +3905,15 @@ C     If(NoSt.Eq.1) Then
 C
       Return
       End
-
+C
+C
 *Deck AB1_CAS
       Subroutine AB1_CAS(ABPLUS,ABMIN,URe,Occ,XOne,TwoNO,
      $ RDM2Act,NRDM2Act,IGFact,C,Ind1,Ind2,
      $ IndBlock,NoEig,NDimX,NBasis,NInte1,NInte2)
 C
 C     COMPUTE THE ALPHA-DEPENDENT PARTS OF A+B AND A-B MATRICES
+C     -Mik POLARITONIC VERSION
 C
 C     RDM2 IS IN NO REPRESENTATION. IT IS PARTIALLY SPIN-SUMMED
 C     THE FOLLOWING SYMMETRY IS ASSUMED
@@ -4079,6 +4087,425 @@ C
 C
       If(IP.Eq.IR) Arspq=Arspq+(Occ(IP)-Occ(IS))*HNO(IQS)
       If(IS.Eq.IQ) Arspq=Arspq+(Occ(IQ)-Occ(IR))*HNO(IPR)
+C
+C
+      AuxTwoPQRS=Zero
+      If(IGFact(NAddr3(IP,IQ,IR,IS)).Eq.0) AuxTwoPQRS=One
+      AuxPQRS=AuxTwoPQRS*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IR,IS))-TwoNO(NAddr3(IP,IR,IQ,IS)))
+C
+C     T1+T2
+C
+      If(Occ(IP)*Occ(IR).Ne.Zero) Then
+C
+      If(Occ(IP).Eq.One.Or.Occ(IR).Eq.One) Then
+C
+      If(AuxTwoPQRS.Eq.One)
+     $ Arspq=Arspq+Occ(IP)*Occ(IR)*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IR,IS))-TwoNO(NAddr3(IP,IR,IQ,IS)))
+      If(IP.Eq.IR) Arspq=Arspq+Occ(IP)*AuxI(IQS)
+C
+      Else
+C
+      Do ITT=1,NAct
+      Do IUU=1,NAct
+      IT=Ind1(ITT)
+      IU=Ind1(IUU)
+C
+      If(IGFact(NAddr3(IS,IQ,IT,IU)).Eq.0)
+     $ Arspq=Arspq
+     $ +TwoNO(NAddr3(IS,IQ,IT,IU))*
+     $  FRDM2(IP,IU,IR,IT,RDM2Act,Occ,Ind2,NAct,NBasis)
+     $ +TwoNO(NAddr3(IS,IU,IT,IQ))*
+     $ FRDM2(IP,IU,IT,IR,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+      EndDo
+      EndDo
+C
+      If(IP.Eq.IR) Arspq=Arspq+Occ(IP)*AuxIO(IQS)
+C
+      EndIf
+      EndIf
+C
+C     T3+T4 
+C
+      If(Occ(IQ)*Occ(IS).Ne.Zero) Then
+C
+      If(Occ(IQ).Eq.One.Or.Occ(IS).Eq.One) Then
+C
+      If(AuxTwoPQRS.Eq.One)
+     $ Arspq=Arspq+Occ(IQ)*Occ(IS)*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IR,IS))-TwoNO(NAddr3(IP,IR,IQ,IS)))
+      If(IQ.Eq.IS) Arspq=Arspq+Occ(IQ)*AuxI(IPR)
+C
+      Else
+C
+      Do ITT=1,NAct
+      Do IUU=1,NAct
+      IT=Ind1(ITT)
+      IU=Ind1(IUU)
+C
+      If(IGFact(NAddr3(IU,IT,IP,IR)).Eq.0) 
+     $ Arspq=Arspq
+     $ +TwoNO(NAddr3(IU,IT,IP,IR))*
+     $ FRDM2(IS,IT,IQ,IU,RDM2Act,Occ,Ind2,NAct,NBasis)
+     $ +TwoNO(NAddr3(IU,IR,IP,IT))*
+     $ FRDM2(IS,IT,IU,IQ,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+      EndDo
+      EndDo
+C
+      If(IQ.Eq.IS) Arspq=Arspq+Occ(IQ)*AuxIO(IPR)
+C
+      EndIf
+C     
+      EndIf
+C
+C     T5
+C
+      If(Occ(IR)*Occ(IQ).Ne.Zero) Then
+      If(Occ(IQ).Eq.One.Or.Occ(IR).Eq.One) Then
+C
+      Arspq=Arspq-Occ(IQ)*Occ(IR)*AuxPQRS
+C
+      Else
+C
+      Do ITT=1,NAct
+      Do IUU=1,NAct
+      IT=Ind1(ITT)
+      IU=Ind1(IUU)
+C
+      If(IGFact(NAddr3(IP,IT,IS,IU)).Eq.0)
+     $ Arspq=Arspq
+     $ -TwoNO(NAddr3(IP,IT,IS,IU))*
+     $ FRDM2(IT,IU,IQ,IR,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+      EndDo
+      EndDo
+C
+      EndIf
+      EndIf
+C
+C     T6      
+C
+      If(Occ(IP)*Occ(IS).Ne.Zero) Then
+      If(Occ(IP).Eq.One.Or.Occ(IS).Eq.One) Then
+C
+      Arspq=Arspq-Occ(IP)*Occ(IS)*AuxPQRS
+C
+      Else
+C
+      Do ITT=1,NAct
+      Do IUU=1,NAct
+      IT=Ind1(ITT)
+      IU=Ind1(IUU)
+C
+      If(IGFact(NAddr3(IT,IQ,IU,IR)).Eq.0)
+     $ Arspq=Arspq
+     $ -TwoNO(NAddr3(IT,IQ,IU,IR))*
+     $ FRDM2(IS,IP,IU,IT,RDM2Act,Occ,Ind2,NAct,NBasis)
+C
+      EndDo
+      EndDo
+C
+      EndIf
+      EndIf
+C
+      If(IS.Eq.IQ) Arspq=Arspq-Half*WMAT(IP,IR)
+      If(IP.Eq.IR) Arspq=Arspq-Half*WMAT(IQ,IS)
+C
+      If(IR.Gt.IS.And.IP.Gt.IQ) Then
+      ABPLUS(IRow+(ICol-1)*NoEig)=ABPLUS(IRow+(ICol-1)*NoEig)+Arspq 
+      ABMIN(IRow+(ICol-1)*NoEig)=ABMIN(IRow+(ICol-1)*NoEig)+Arspq
+      EndIf
+C    
+      If(IR.Gt.IS.And.IQ.Gt.IP) Then
+      ABPLUS(IRow+(ICol-1)*NoEig)=ABPLUS(IRow+(ICol-1)*NoEig)+Arspq
+      ABMIN(IRow+(ICol-1)*NoEig)=ABMIN(IRow+(ICol-1)*NoEig)-Arspq
+      EndIf
+C
+c     If(IP.Ne.IQ)
+      EndIf
+C
+C     end of IP,IQ LOOPS
+      EndDo
+      EndDo
+C
+ 1000 Continue
+C     end icount
+      EndIf
+c     If IGem ....
+      EndIf
+C
+      EndDo
+      EndDo
+      Call CPU_TIME(END_TIME)
+      Write(6,'(X,"TIME SPENT ON CONSTRUCTING AB(1)"
+     $ ,F10.2)')END_TIME-START_TIME
+      write(*,*)'icount',icount
+C
+      If(IFunSR.Eq.4) Then
+C
+C     POSTCAS: DIVIDE BY C'c AND SYMMETRIZE
+C
+      Do I=1,NoEig
+      IP=IndBlock(1,I)
+      IQ=IndBlock(2,I)
+      Do J=1,NoEig
+      IR=IndBlock(1,J)
+      IS=IndBlock(2,J)
+C
+      If((C(IP)+C(IQ))*(C(IR)+C(IS)).Ne.Zero)
+     $ ABPLUS(I+(J-1)*NoEig)=ABPLUS(I+(J-1)*NoEig)
+     $/(C(IP)+C(IQ))/(C(IR)+C(IS))
+      If((C(IP)-C(IQ))*(C(IR)-C(IS)).Ne.Zero)
+     $ ABMIN(I+(J-1)*NoEig)=ABMIN(I+(J-1)*NoEig)
+     $/(C(IP)-C(IQ))/(C(IR)-C(IS))
+C
+      EndDo
+      EndDo
+C
+      Do I=1,NoEig
+      Do J=I+1,NoEig
+      ABPLUS((J-1)*NoEig+I)=
+     $ Half*(ABPLUS((J-1)*NoEig+I)+ABPLUS((I-1)*NoEig+J))
+      ABPLUS((I-1)*NoEig+J)=ABPLUS((J-1)*NoEig+I)
+      ABMIN((J-1)*NoEig+I)=
+     $ Half*(ABMIN((J-1)*NoEig+I)+ABMIN((I-1)*NoEig+J))
+      ABMIN((I-1)*NoEig+J)=ABMIN((J-1)*NoEig+I)
+      EndDo
+      EndDo
+C
+      Else
+C     DIVIDE BY C'c AND COPY TRIANGLE
+C
+      Do I=1,NoEig
+      IP=IndBlock(1,I)
+      IQ=IndBlock(2,I)
+      Do J=1,I
+      IR=IndBlock(1,J)
+      IS=IndBlock(2,J)
+C
+      If((C(IP)+C(IQ))*(C(IR)+C(IS)).Ne.Zero)
+     $ ABPLUS(I+(J-1)*NoEig)=ABPLUS(I+(J-1)*NoEig)
+     $/(C(IP)+C(IQ))/(C(IR)+C(IS))
+      If((C(IP)-C(IQ))*(C(IR)-C(IS)).Ne.Zero)
+     $ ABMIN(I+(J-1)*NoEig)=ABMIN(I+(J-1)*NoEig)
+     $/(C(IP)-C(IQ))/(C(IR)-C(IS))
+C
+      ABPLUS(J+(I-1)*NoEig)=ABPLUS(I+(J-1)*NoEig)
+      ABMIN(J+(I-1)*NoEig)=ABMIN(I+(J-1)*NoEig)
+C
+      EndDo
+      EndDo
+C
+C     end IFunSR
+      EndIf
+C
+      Return
+      End
+
+*Deck AB1_CAS_POL
+      Subroutine AB1_CAS_POL(ABPLUS,ABMIN,URe,Occ,XOne,TwoNO,
+     $ RDM2Act,NRDM2Act,IGFact,C,Ind1,Ind2,
+     $ IndBlock,NoEig,NDimX,NBasis,NInte1,NInte2,RDMpel,PEint)
+C
+C     COMPUTE THE ALPHA-DEPENDENT PARTS OF A+B AND A-B MATRICES
+C     -Mik POLARITONIC VERSION
+C
+C     RDM2 IS IN NO REPRESENTATION. IT IS PARTIALLY SPIN-SUMMED
+C     THE FOLLOWING SYMMETRY IS ASSUMED
+C     RDM2(ij,kl) = RDM2(kl,ij)
+C     ONLY ELEMENTS ij >= kl ARE STORED BUT ONLY FOR THE ACTIVE ELEMENTS
+C     SIZE: NRDM2 = NBasis**2*(NBasis**2+1)/2
+C
+      Implicit Real*8 (A-H,O-Z)
+C
+      Parameter(Zero=0.D0, Half=0.5D0, One=1.D0, Two=2.D0, Four=4.D0)
+C
+      Include 'commons.inc'
+C
+      Dimension ABPLUS(NoEig*NoEig),ABMIN(NoEig*NoEig),
+     $ URe(NBasis,NBasis),
+     $ Occ(NBasis),XOne(NInte1),TwoNO(NInte2),
+     $ RDM2Act(NRDM2Act),IGFact(NInte2),C(NBasis),
+     $ Ind1(NBasis),Ind2(NBasis),
+     $ IndBlock(2,NDimX)
+C
+C     LOCAL ARRAYS
+C
+      Dimension HNO(NInte1),WMAT(NBasis,NBasis),
+     $  AuxI(NInte1),AuxIO(NInte1)
+C
+      Do I=1,NoEig*NoEig
+      ABPLUS(I)=Zero
+      ABMIN(I)=Zero
+      EndDo
+C
+C     ONE-ELECTRON MATRIX IN A NO REPRESENTATION
+C   
+      IJ=0
+      Do I=1,NBasis
+      Do J=1,I
+      IJ=IJ+1
+      HNO(IJ)=Zero
+C
+      Do IA=1,NBasis
+      Do IB=1,NBasis
+      IAB=(Max(IA,IB)*(Max(IA,IB)-1))/2+Min(IA,IB)
+      HNO(IJ)=HNO(IJ)+URe(I,IA)*URe(J,IB)*XOne(IAB)
+      EndDo
+      EndDo
+C
+      EndDo
+      EndDo
+C
+C     CONSTRUCT ONE-ELECTRON PART OF THE AC ALPHA-HAMILTONIAN
+C
+      IJ=0
+      Do I=1,NBasis
+      Do J=1,I
+      IJ=IJ+1
+C
+      If(IGem(I).Eq.IGem(J)) Then
+C
+      Aux=Zero
+C
+      Do IT=1,NBasis
+      If(IGem(IT).Ne.IGem(I))
+     $ Aux=Aux+Occ(IT)*
+     $ (Two*TwoNO(NAddr3(IT,IT,I,J))-TwoNO(NAddr3(IT,I,IT,J)))
+      EndDo
+C
+      HNO(IJ)=-Aux
+C
+      EndIf
+C
+      EndDo
+      EndDo
+C
+      NAct=NAcCAS
+      INActive=NInAcCAS
+      NOccup=INActive+NAct
+C
+C     AUXILIARY MATRIX AuxI  
+C   
+      IPQ=0
+      Do IP=1,NBasis
+      Do IQ=1,IP
+      IPQ=IPQ+1
+      AuxI(IPQ)=Zero
+      AuxIO(IPQ)=Zero
+      Do IT=1,NOccup
+      If(IGFact(NAddr3(IT,IT,IP,IQ)).Eq.0) Then
+      AuxI(IPQ)=AuxI(IPQ)+Occ(IT)*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IT,IT))-TwoNO(NAddr3(IP,IT,IQ,IT)))
+      If(IT.Le.INActive) AuxIO(IPQ)=AuxIO(IPQ)+Occ(IT)*
+     $ (Two*TwoNO(NAddr3(IP,IQ,IT,IT))-TwoNO(NAddr3(IP,IT,IQ,IT)))
+      EndIf
+      EndDo
+      EndDo
+      EndDo
+C
+C     AUXILIARY MATRIX WMAT
+C
+      Do I=1,NBasis
+      Do J=1,NBasis
+      WMAT(I,J)=Zero
+      EndDo
+      EndDo
+C
+      Do IP=1,NBasis
+      Do IT=1,NOccup
+      Do IW=1,NOccup
+      Do IU=1,NOccup
+C
+      If(IGFact(NAddr3(IT,IW,IP,IU)).Eq.0) Then
+C
+      Do IR=1,NOccup
+      WMAT(IP,IR)=WMAT(IP,IR)
+     $ +TwoNO(NAddr3(IT,IW,IP,IU))
+     $ *FRDM2(IW,IU,IT,IR,RDM2Act,Occ,Ind2,NAct,NBasis)
+     $ +TwoNO(NAddr3(IT,IU,IP,IW))
+     $ *FRDM2(IW,IU,IR,IT,RDM2Act,Occ,Ind2,NAct,NBasis)
+      EndDo
+C
+      EndIf
+C
+      EndDo
+      EndDo
+      EndDo
+      EndDo
+C
+      icount=0
+      Call CPU_TIME(START_TIME)
+C
+C     HAP-TEST!
+C      IFunSR=4
+C
+      Do IRow=1,NoEig
+C
+      IR=IndBlock(1,IRow)
+      IS=IndBlock(2,IRow)
+C
+      If(IFunSR.Eq.4) Then
+      IColEnd=NoEig
+      Else
+      IColEnd=IRow
+      EndIf
+C
+      Do ICol=1,IColEnd
+C
+      IPP=IndBlock(1,ICol)
+      IQQ=IndBlock(2,ICol)
+C
+      If( .NOT.(IGem(IR).Eq.IGem(IS).And.IGem(IR).Eq.IGem(IPP)
+     $ .And.IGem(IR).Eq.IGem(IQQ)) ) Then
+CC
+      If( (Occ(IR)*Occ(IS).Eq.Zero.And.Occ(IPP)*Occ(IQQ).Eq.Zero
+     $ .And.Abs(TwoNO(NAddr3(IR,IS,IPP,IQQ))).Lt.1.D-25)
+     $.Or.
+     $((Occ(IR).Eq.One.Or.Occ(IS).Eq.One)
+     $ .And.
+     $ (Occ(IPP).Eq.One.Or.Occ(IQQ).Eq.One)
+     $ .And.Abs(TwoNO(NAddr3(IR,IS,IPP,IQQ))).Lt.1.D-25)) Then
+C
+      icount=icount+1
+C
+      Else  
+
+      Do IP=IQQ,IPP,IPP-IQQ
+      Do IQ=IQQ,IPP,IPP-IQQ
+      If(IP.Ne.IQ) Then
+C
+      IQS=(Max(IS,IQ)*(Max(IS,IQ)-1))/2+Min(IS,IQ)
+      IPR=(Max(IR,IP)*(Max(IR,IP)-1))/2+Min(IR,IP)
+C
+      Arspq=Zero
+C
+      If(IP.Eq.IR) Arspq=Arspq+(Occ(IP)-Occ(IS))*HNO(IQS)
+      If(IS.Eq.IQ) Arspq=Arspq+(Occ(IQ)-Occ(IR))*HNO(IPR)
+C
+C     Polaritonic terms -Mik   
+C     (unfortunately no natural orbitals in this case)
+         Arspq=Arspq+RDMpel(IPR)*PEint(IQS)
+         Arspq=Arspq+RDMpel(IQS)*PEint(IPR)
+C     More terms
+         if(IP.Eq.IR) Then
+            Do IXX=1,NBasis
+              IQX=(Max(IS,IXX)*(Max(IS,IXX)-1))/2+Min(IS,IXX)
+              ISX=(Max(IQ,IXX)*(Max(IQ,IXX)-1))/2+Min(IQ,IXX)
+              Arspq=Arspq-RDMpel(ISX)*PEint(IQX)
+            EndDo
+         EndIf
+         If(IS.Eq.IQ) Then
+            Do IXX=1,NBasis
+              IRX=(Max(IR,IXX)*(Max(IR,IXX)-1))/2+Min(IR,IXX)
+              IPX=(Max(IP,IXX)*(Max(IP,IXX)-1))/2+Min(IP,IXX)
+              Arspq=Arspq-RDMpel(IRX)*PEint(IPX)
+            EndDo
+         EndIf
+C
 C
       AuxTwoPQRS=Zero
       If(IGFact(NAddr3(IP,IQ,IR,IS)).Eq.0) AuxTwoPQRS=One
